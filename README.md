@@ -3,4 +3,4 @@
 
 [1]: https://pkg.go.dev/badge/github.com/teocci/go-split-join.svg
 [2]: https://pkg.go.dev/github.com/teocci/go-split-join
-[3]: https://github.com/teocci/go-split-join/releases/tag/v1.0.0
+[3]: https://github.com/teocci/go-split-join/releases/tag/v1.0.420
