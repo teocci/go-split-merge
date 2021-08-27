@@ -15,11 +15,11 @@ const (
 	appShort = "Split/Join files"
 	appLong  = `This application split/join large files to improve portability over email or github commits.`
 	version  = "v1.0"
-	commit   = "420"
+	commit   = "5"
 )
 
 const (
-	versionTemplate = "%s %s (%s)\n"
+	versionTemplate = "%s %s.%s\n"
 )
 
 var (

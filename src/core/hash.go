@@ -11,6 +11,15 @@ import (
 	"os"
 )
 
+type Hashes struct {
+	Hashes []HashData `json:"hashes"`
+}
+
+type HashData struct {
+	Name string `json:"file_name"`
+	Hash string `json:"file_hash"`
+}
+
 // Hash method returns the file hash
 func Hash(filename string) string {
 	file, err := os.Open(filename)

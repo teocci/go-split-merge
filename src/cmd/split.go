@@ -15,19 +15,19 @@ const (
 	splitShort = "Split files into small files"
 	splitLong  = `This command split large files to improve portability over email or github commits.`
 
-	splitFFlagName  = "joinFN"
+	splitFFlagName  = "filename"
 	splitFFlagShort = "f"
 	splitFFlagDesc  = "it will be split into a number of smaller files."
+
+	splitFDFlagName  = "destination"
+	splitFDFlagShort = "d"
+	splitFDFlagDesc  = "directory where the file will be split into [default './split']"
+	splitFDDefault   = ""
 
 	splitSizeFlagName    = "size"
 	splitSizeFlagShort   = "s"
 	splitSizeFlagDesc    = "size in MB in each of the smaller files"
 	splitSizeFlagDefault = 48
-
-	makeTmpDirFlagName    = "tmp-dir"
-	makeTmpDirFlagShort   = "t"
-	makeTmpDirFlagDesc    = "make a temporal directory for the hash and smaller files"
-	makeTmpDirFlagDefault = true
 
 	errSizeLesserThanOneMB = "size < 1, size should be greater than 1 MB"
 )
@@ -39,22 +39,22 @@ var (
 		Short:   splitShort,
 		Long:    splitLong,
 		PreRunE: splitPreRun,
-		RunE:    splitRun,
+		RunE:    splitRunE,
 	}
 
-	filename   string
-	size       int
-	makeTmpDir bool
+	splitFN  string
+	splitDDN string
+	size     int
 )
 
 func init() {
+	splitDDN = splitFDDefault
 	size = splitSizeFlagDefault
-	makeTmpDir = makeTmpDirFlagDefault
 
 	app.AddCommand(splitCmd)
-	splitCmd.Flags().StringVarP(&filename, splitFFlagName, splitFFlagShort, filename, splitFFlagDesc)
+	splitCmd.Flags().StringVarP(&splitFN, splitFFlagName, splitFFlagShort, splitFN, splitFFlagDesc)
+	splitCmd.Flags().StringVarP(&splitDDN, splitFDFlagName, splitFDFlagShort, splitDDN, splitFDFlagDesc)
 	splitCmd.Flags().IntVarP(&size, splitSizeFlagName, splitSizeFlagShort, size, splitSizeFlagDesc)
-	splitCmd.Flags().BoolVarP(&makeTmpDir, makeTmpDirFlagName, makeTmpDirFlagShort, makeTmpDir, makeTmpDirFlagDesc)
 
 	_ = splitCmd.MarkFlagRequired(splitFFlagName)
 }
@@ -62,6 +62,10 @@ func init() {
 func splitPreRun(cmd *cobra.Command, args []string) error {
 	if Version {
 		fmt.Printf(versionTemplate, appName, version, commit)
+	}
+
+	if _, err := os.Stat(splitFN); err != nil {
+		_ = cmd.Help()
 	}
 
 	if size < 1 {
@@ -72,13 +76,10 @@ func splitPreRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func splitRun(cmd *cobra.Command, args []string) error {
+func splitRunE(cmd *cobra.Command, args []string) error {
 	var err error
-	if _, err = os.Stat(filename); err != nil {
-		return err
-	}
 
-	err = core.Split(filename, size, makeTmpDir)
+	err = core.Split(splitFN, splitDDN, size)
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/teocci/go-split-merge/src/filemngt"
 	"io"
@@ -13,9 +14,15 @@ import (
 	"path/filepath"
 )
 
+const (
+	tmpSplitDir        = "./split"
+	hashFileNamePrefix = "hash-"
+	hashFileExt        = ".json"
+	partFileExtPrefix  = ".pt"
+)
 
 // Split method splits the files into part files of user defined lengths
-func Split(filename string, size int, makeTmpDir bool) error {
+func Split(filename string, dest string, size int) error {
 	if filemngt.IsValid(filename) {
 		var err error
 		bufferSize := int64(KiB)           // 1 KB for optimal splitting
@@ -23,49 +30,37 @@ func Split(filename string, size int, makeTmpDir bool) error {
 
 		filePath, err := filemngt.GetFilePath(filename)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-
+		fileStats, _ := os.Stat(filePath)
 		basePath, fn := filepath.Split(filename)
 
-		fileStats, _ := os.Stat(filePath)
+		workPath, err := findWorkPath(basePath, dest)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("workPath:", workPath)
+
 
 		pieces := int(math.Ceil(float64(fileStats.Size()) / float64(partSize)))
 		nTimes := int(math.Ceil(float64(partSize) / float64(bufferSize)))
 
 		file, err := os.Open(filePath)
 
-		hashFileName := hashFileNamePrefix + fn
-		var hashFilePath string
-		var tmpDirPath string
-		if makeTmpDir {
-			fmt.Println("Make tmp dir:", tmpSplitDir)
-			tmpDirPath = filepath.Join(basePath, tmpSplitDir)
-			err := filemngt.MakeDirIfNotExist(tmpDirPath)
-			if err != nil {
-				log.Fatal(err)
-			}
+		hashFileName := hashFileNamePrefix + fn + hashFileExt
+		hashFilePath := filepath.Join(workPath, hashFileName)
+		_, _ = os.Create(hashFilePath)
+		hashFile, _ := os.OpenFile(hashFilePath, os.O_CREATE, 0644)
 
-			hashFilePath = filepath.Join(tmpDirPath, hashFileName)
-		}
-
-		_, err = os.Create(hashFilePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		hashFile, err := os.OpenFile(hashFilePath, os.O_CREATE, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
+		var hashes Hashes
 		for i := 0; i < pieces; i++ {
 			partNumTag := fmt.Sprintf("%02d", i)
-			partFileName := fn + hashFileExtPrefix + partNumTag
-			partFilePath := filepath.Join(tmpDirPath, partFileName)
+			partFileName := fn + partFileExtPrefix + partNumTag
+			partFilePath := filepath.Join(workPath, partFileName)
 			partFile, err := os.OpenFile(partFilePath, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
-				log.Fatal(err)
+				return filemngt.ErrCanNotOpenFile(partFilePath, err.Error())
 			}
 
 			fmt.Println("Creating file:", partFileName)
@@ -83,13 +78,14 @@ func Split(filename string, size int, makeTmpDir bool) error {
 			}
 
 			partFileHash := Hash(partFilePath)
-			s := partFileName + ": " + partFileHash + "\n"
-			_, _ = hashFile.WriteString(s)
-			partFile.Close()
 
+			appendHash(&hashes, partFileName, partFileHash)
+
+			partFile.Close()
 		}
-		s := "original-file-hash: " + Hash(filename) + "\n"
-		_, _ = hashFile.WriteString(s)
+
+		appendHash(&hashes, fn, Hash(filename))
+		saveHashData(hashFile, hashes)
 
 		file.Close()
 		hashFile.Close()
@@ -99,4 +95,37 @@ func Split(filename string, size int, makeTmpDir bool) error {
 	}
 
 	return nil
+}
+
+func findWorkPath(path string, dest string) (string, error) {
+	var destPath string
+	var err error
+	if len(dest) == 0 {
+		fmt.Println("Make working dir:", tmpSplitDir)
+		destPath = filepath.Join(path, tmpSplitDir)
+		err = filemngt.MakeDirIfNotExist(destPath)
+		if err != nil {
+			return emptyString, filemngt.ErrCanNotMakeDir(destPath, err.Error())
+		}
+	} else {
+		destPath, err = filemngt.GetFilePath(path)
+		if err != nil {
+			return emptyString, filemngt.ErrCanNotExpandPath(path, err.Error())
+		}
+	}
+
+	return destPath, nil
+}
+
+func appendHash(h *Hashes, name string, hash string) {
+	hd := HashData{
+		Name: name,
+		Hash: hash,
+	}
+	h.Hashes = append(h.Hashes, hd)
+}
+
+func saveHashData(f *os.File, h Hashes) {
+	hdJson, _ := json.MarshalIndent(h, "", " ")
+	_, _ = f.WriteString(string(hdJson))
 }

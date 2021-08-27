@@ -36,11 +36,3 @@ const (
 	Exabyte              = Petabyte * 1000
 	EB                   = Exabyte
 )
-
-const (
-	tmpSplitDir        = "./split"
-	hashFileNamePrefix = "hash-"
-	hashFileExtPrefix  = ".pt"
-	joinFilePrefix     = "joined-"
-	regExFirstElement  = "^"
-)

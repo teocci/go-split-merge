@@ -15,7 +15,13 @@ import (
 	"strings"
 )
 
-func Join(src, dest string) (string, []string, error) {
+const (
+	emptyString       = ""
+	joinFilePrefix    = "merged-"
+	regExFirstElement = "^"
+)
+
+func Merge(src, dest string) (string, []string, error) {
 	var parts []string
 	var basePath, srcFFN, mergedFileName, mergedFilePath string
 	var err error
@@ -28,22 +34,16 @@ func Join(src, dest string) (string, []string, error) {
 		if len(basePath) == 0 {
 			basePath, err = os.Getwd()
 			if err != nil {
-				return mergedFileName, nil, filemngt.ErrCanGetPWD(err.Error())
+				return emptyString, nil, filemngt.ErrCanNotGetPWD(basePath, err.Error())
 			}
 		}
 
 		parent := filepath.Dir(basePath)
 		destPath := filepath.Join(parent, dest)
 
-		fmt.Println("basePath:", basePath)
-		fmt.Println("srcFFN:", srcFFN)
-		fmt.Println("srcExt:", srcExt)
-		fmt.Println("srcFN:", srcFN)
-		fmt.Println("parent-path:", parent)
-
 		err = filepath.WalkDir(basePath, func(path string, d fs.DirEntry, err error) error {
 			if !d.IsDir() || path == basePath {
-				r, err := regexp.MatchString(regExFirstElement + srcFN, d.Name())
+				r, err := regexp.MatchString(regExFirstElement+srcFN, d.Name())
 				if err == nil && r {
 					parts = append(parts, d.Name())
 					fmt.Println("f.name:", d.Name())
@@ -80,7 +80,7 @@ func Join(src, dest string) (string, []string, error) {
 			partPath := filepath.Join(parent, part)
 			partFile, err := os.Open(partPath)
 			if err != nil {
-				log.Fatal(err)
+				return emptyString, nil, filemngt.ErrCanNotOpenFile(partPath, err.Error())
 			}
 			defer partFile.Close()
 

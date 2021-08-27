@@ -145,7 +145,7 @@ func getWorkingPWD(fn string, m ExtractMode) (string, error) {
 		IsDot(bPath) {
 		bPath, err = os.Getwd()
 		if err != nil {
-			return emptyString, ErrCanGetPWD(err.Error())
+			return emptyString, ErrCanNotGetPWD(bPath, err.Error())
 		}
 	}
 
@@ -153,7 +153,7 @@ func getWorkingPWD(fn string, m ExtractMode) (string, error) {
 	if len(vPath) == 0 {
 		pwd, err := os.Getwd()
 		if err != nil {
-			return emptyString, ErrCanGetPWD(err.Error())
+			return emptyString, ErrCanNotGetPWD(pwd, err.Error())
 		}
 		bPath = filepath.Join(pwd, bPath)
 	}
