@@ -5,17 +5,19 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 const (
 	appName  = "go-split-merge"
 	appShort = "Split/Join files"
 	appLong  = `This application split/join large files to improve portability over email or github commits.`
+
 	version  = "v1.1"
-	commit   = "0"
+	commit   = "1"
 )
 
 const (

@@ -1,17 +1,19 @@
 // Package core
-// Created by RTT.
+// Created by Teocci.
 // Author: teocci@yandex.com on 2021-Aug-26
 package core
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/teocci/go-split-merge/src/filemngt"
 	"io"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
+
+	"github.com/teocci/go-split-merge/src/filemngt"
+	"github.com/teocci/go-split-merge/src/units"
 )
 
 const (
@@ -23,12 +25,12 @@ const (
 
 // Split method splits the files into part files of user defined lengths
 func Split(filename string, dest string, size int) error {
-	if filemngt.IsValid(filename) {
+	if filemngt.IsPathValid(filename) {
 		var err error
-		bufferSize := int64(KiB)           // 1 KB for optimal splitting
-		partSize := int64(size * int(MiB)) // Size in MiB
+		bufferSize := int64(units.KiB)           // 1 KB for optimal splitting
+		partSize := int64(size * int(units.MiB)) // Size in MiB
 
-		filePath, err := filemngt.GetFilePath(filename)
+		filePath, err := filemngt.FilePathE(filename)
 		if err != nil {
 			return err
 		}
@@ -39,9 +41,7 @@ func Split(filename string, dest string, size int) error {
 		if err != nil {
 			return err
 		}
-
 		fmt.Println("workPath:", workPath)
-
 
 		pieces := int(math.Ceil(float64(fileStats.Size()) / float64(partSize)))
 		nTimes := int(math.Ceil(float64(partSize) / float64(bufferSize)))
@@ -108,7 +108,7 @@ func findWorkPath(path string, dest string) (string, error) {
 			return emptyString, filemngt.ErrCanNotMakeDir(destPath, err.Error())
 		}
 	} else {
-		destPath, err = filemngt.GetFilePath(path)
+		destPath, err = filemngt.FilePathE(path)
 		if err != nil {
 			return emptyString, filemngt.ErrCanNotExpandPath(path, err.Error())
 		}

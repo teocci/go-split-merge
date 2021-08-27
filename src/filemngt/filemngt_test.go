@@ -1,5 +1,5 @@
 // Package filemngt
-// Created by RTT.
+// Created by Teocci.
 // Author: teocci@yandex.com on 2021-Aug-26
 //go:build windows
 // +build windows
@@ -27,7 +27,113 @@ func patchEnv(key, value string) func() {
 
 	return deferFunc
 }
-func TestGetWorkingPWD(t *testing.T) {
+
+func TestDirExtractPathE(t *testing.T) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	_ = pwd
+
+	cases := []struct {
+		Input  string
+		Output string
+		Err    bool
+	}{
+		{
+			"/foo",
+			"/foo",
+			false,
+		},
+
+		{
+			"~/foo",
+			filepath.Join(homeDir, "foo"),
+			false,
+		},
+
+		{
+			"~/foo/bar",
+			filepath.Join(homeDir, "foo/bar"),
+			false,
+		},
+
+		{
+			emptyString,
+			emptyString,
+			false,
+		},
+
+		{
+			dotString,
+			dotString,
+			false,
+		},
+
+		{
+			tildeString,
+			homeDir,
+			false,
+		},
+
+		{
+			"~foo/foo",
+			"",
+			true,
+		},
+
+		{
+			"01.data.zip",
+			"",
+			true,
+		},
+
+		{
+			"D:/Projects/Go/go-split-merge/src/01.data.zip",
+			"",
+			true,
+		},
+
+		{
+			"tmp/01.data.zip",
+			"",
+			true,
+		},
+
+		{
+			".tmp/01.data.zip",
+			"",
+			true,
+		},
+
+		{
+			"./tmp/foo",
+			"./tmp/foo",
+			false,
+		},
+	}
+
+	for _, tc := range cases {
+		actual, err := DirExtractPathE(tc.Input)
+		if (err != nil) != tc.Err {
+			t.Fatalf("Input: %#v\n\nErr: %s", tc.Input, err)
+		}
+
+		if actual != tc.Output {
+			t.Fatalf("\nInput: %#v\nOutput: %#v\nExpected: %#v", tc.Input, actual, tc.Output)
+		} else {
+			fmt.Printf("Input: %#v\nOutput: %#v\nExpected: %#v\n", tc.Input, actual, tc.Output)
+			fmt.Println("------------")
+		}
+	}
+}
+
+func TestFileParentDirE(t *testing.T) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -105,7 +211,7 @@ func TestGetWorkingPWD(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		actual, err := GetWorkingPWD(tc.Input)
+		actual, err := FileParentDirE(tc.Input)
 		if (err != nil) != tc.Err {
 			t.Fatalf("Input: %#v\n\nErr: %s", tc.Input, err)
 		}
@@ -198,7 +304,7 @@ func TestGetFilePath(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		actual, err := getFilePath(tc.Input, NativeEMode)
+		actual, err := FilePathE(tc.Input)
 		if (err != nil) != tc.Err {
 			t.Fatalf("Input: %#v\n\nErr: %s", tc.Input, err)
 		}
@@ -215,7 +321,7 @@ func TestGetFilePath(t *testing.T) {
 	expected := filepath.Join("C:/", "custom", "path", "foo/bar")
 
 	input := "~/foo/bar"
-	actual, err := getFilePath(input, CustomEMode)
+	actual, err := filePathE(input, CustomEMode)
 
 	if err != nil {
 		t.Errorf("No error is expected, got: %v", err)

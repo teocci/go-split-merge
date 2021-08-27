@@ -1,5 +1,5 @@
 // Package filemngt
-// Created by RTT.
+// Created by Teocci.
 // Author: teocci@yandex.com on 2021-Aug-26
 package filemngt
 
@@ -36,116 +36,113 @@ const (
 	UndefinedEModeTag = "undefined"
 )
 
-func IsValid(fp string) bool {
+func IsPathValid(p string) bool {
 	// Check if file already exists
-	if _, err := os.Stat(fp); err == nil {
+	if _, err := os.Stat(p); err == nil {
 		return true
 	}
 
 	// Attempt to create it
 	var d []byte
-	if err := ioutil.WriteFile(fp, d, 0644); err == nil {
-		os.Remove(fp) // And delete it
+	if err := ioutil.WriteFile(p, d, 0644); err == nil {
+		os.Remove(p) // And delete it
 		return true
 	}
 
 	return false
 }
 
-func startWithTilde(s string) bool {
-	if len(s) > 0 {
-		return s[0] == tildeChar
-	}
+func StartWithTilde(s string) bool {
+	return len(s) > 0 && s[0] == tildeChar
+}
 
-	return false
+func StartWithDot(s string) bool {
+	return len(s) > 0 && s[0] == dotChar
+}
+
+func StartWithPS(s string) bool {
+	return len(s) > 0 && os.IsPathSeparator(s[0])
 }
 
 func IsTilde(s string) bool {
-	if len(s) == 1 {
-		return s == tildeString || s[0] == tildeChar
-	}
-
-	return false
+	return len(s) == 1 && (s == tildeString || s[0] == tildeChar)
 }
 
 func IsDot(s string) bool {
-	if len(s) == 1 {
-		return s == dotString || s[0] == dotChar
-	}
-
-	return false
+	return len(s) == 1 && (s == dotString || s[0] == dotChar)
 }
 
 func IsPathSeparator(s string) bool {
-	if len(s) == 1 {
-		return os.IsPathSeparator(s[0])
-	}
-
-	return false
+	return len(s) == 1 && os.IsPathSeparator(s[0])
 }
 
-func MakeDirIfNotExist(d string) error {
-	var err error
-	if _, err = os.Stat(d); os.IsNotExist(err) {
-		err = os.Mkdir(d, os.ModeDir)
-		if err == nil {
-			return nil
+func DirExtractPathE(dir string) (string, error) {
+	return dirExtractPathE(dir, NativeEMode)
+}
+
+func dirExtractPathE(dir string, mode ExtractMode) (string, error) {
+	if len(dir) == 0 {
+		return emptyString, nil
+	}
+
+	if StartWithTilde(dir) {
+		if path, err := expandByModeE(dir, mode); err == nil {
+			return path, nil
+		} else {
+			return emptyString, err
 		}
 	}
 
-	return err
-}
-
-func MakeDir(d string) error {
-	err := os.Mkdir(d, os.ModeDir)
-	if err == nil {
-		return nil
-	}
-	if os.IsExist(err) {
-		// Check that the existing path is a directory
-		info, err := os.Stat(d)
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			return ErrExistsIsNotADirectory()
+	if stat, err := os.Stat(dir); err == nil {
+		if !stat.IsDir() {
+			return emptyString, ErrPathExistIsNotDirectory(dir)
 		}
 
-		return nil
+		return dir, nil
 	}
 
-	return err
+	ext := filepath.Ext(dir)
+	if len(ext) > 0 {
+		return emptyString, ErrPathIsNotDirectory(dir)
+	}
+
+	return dir, nil
 }
 
-// GetWorkingPWD get the working pwd
-func GetWorkingPWD(f string) (string, error) {
-	return getWorkingPWD(f, NativeEMode)
+// FileParentDirE retrieve the file's parent directory.
+// Uses the NativeEMode as extraction mode.
+// This function also return errors if any.
+func FileParentDirE(f string) (string, error) {
+	return fileParentDirByModeE(f, NativeEMode)
 }
-func getWorkingPWD(fn string, m ExtractMode) (string, error) {
+
+func fileParentDirByModeE(fn string, m ExtractMode) (string, error) {
 	if len(fn) == 0 {
 		return emptyString, nil
 	}
+
 	var bPath string
 	var err error
 
 	bPath = filepath.Dir(fn)
 
-	if IsTilde(bPath) || IsTilde(fn) || startWithTilde(bPath) {
+	if IsTilde(bPath) || IsTilde(fn) || StartWithTilde(bPath) {
 		if IsTilde(fn) {
 			bPath = tildeString
 		}
-		bPath, err = Expand(bPath, m)
+		bPath, err = ExpandByModeE(bPath, m)
 		if err != nil {
 			return emptyString, ErrCanNotExpandPath(bPath, err.Error())
 		}
 
 	}
+
 	if len(bPath) == 0 ||
 		IsPathSeparator(bPath) ||
 		IsDot(bPath) {
 		bPath, err = os.Getwd()
 		if err != nil {
-			return emptyString, ErrCanNotGetPWD(bPath, err.Error())
+			return emptyString, ErrCanNotFindPWD(bPath, err.Error())
 		}
 	}
 
@@ -153,7 +150,7 @@ func getWorkingPWD(fn string, m ExtractMode) (string, error) {
 	if len(vPath) == 0 {
 		pwd, err := os.Getwd()
 		if err != nil {
-			return emptyString, ErrCanNotGetPWD(pwd, err.Error())
+			return emptyString, ErrCanNotFindPWD(pwd, err.Error())
 		}
 		bPath = filepath.Join(pwd, bPath)
 	}
@@ -161,11 +158,13 @@ func getWorkingPWD(fn string, m ExtractMode) (string, error) {
 	return bPath, nil
 }
 
-func GetFilePath(f string) (string, error) {
-	return getFilePath(f, NativeEMode)
+// FilePathE retrieve the file's path.
+// This function also return errors if any.
+func FilePathE(f string) (string, error) {
+	return filePathE(f, NativeEMode)
 }
 
-func getFilePath(f string, m ExtractMode) (string, error) {
+func filePathE(f string, m ExtractMode) (string, error) {
 	var basePath string
 	var fPath string
 	var err error
@@ -175,13 +174,13 @@ func getFilePath(f string, m ExtractMode) (string, error) {
 		return emptyString, nil
 	}
 
-	if startWithTilde(f) {
+	if StartWithTilde(f) {
 		needExpand = true
 	}
 
 	_, ffn := filepath.Split(f)
 
-	basePath, err = getWorkingPWD(f, m)
+	basePath, err = fileParentDirByModeE(f, m)
 	if err != nil {
 		return emptyString, err
 	}
@@ -205,10 +204,55 @@ func getFilePath(f string, m ExtractMode) (string, error) {
 	return fPath, nil
 }
 
-// Expand expands the path to include the home directory if the path
+// Expand expands a path to include the home directory as ExpandE
+// Uses the NativeEMode as extraction mode.
+// This function does not return errors.
+func Expand(path string) string {
+	return expandByMode(path, NativeEMode)
+}
+
+// ExpandByMode expands the path to include the home directory as ExpandByModeE.
+// This function does not return errors.
+func ExpandByMode(path string, mode ExtractMode) (string, error) {
+	return expandByModeE(path, mode)
+}
+
+func expandByMode(path string, mode ExtractMode) string {
+	if len(path) == 0 {
+		return emptyString
+	}
+
+	if path[0] != tildeChar {
+		return path
+	}
+
+	if len(path) > 1 && path[1] != '/' && path[1] != '\\' {
+		return emptyString
+	}
+
+	if dir, err := userHomeDirE(mode); err == nil {
+		return filepath.Join(dir, path[1:])
+	}
+
+	return emptyString
+}
+
+// ExpandE expands the path to include the home directory as ExpandByModeE
+// Uses the NativeEMode as extraction mode.
+// This function also return errors if any.
+func ExpandE(path string) (string, error) {
+	return expandByModeE(path, NativeEMode)
+}
+
+// ExpandByModeE expands the path to include the home directory if the path
 // is prefixed with `~`. If it isn't prefixed with `~`, the path is
 // returned as-is.
-func Expand(path string, mode ExtractMode) (string, error) {
+// This function also return errors if any.
+func ExpandByModeE(path string, mode ExtractMode) (string, error) {
+	return expandByModeE(path, mode)
+}
+
+func expandByModeE(path string, mode ExtractMode) (string, error) {
 	if len(path) == 0 {
 		return emptyString, nil
 	}
@@ -221,7 +265,7 @@ func Expand(path string, mode ExtractMode) (string, error) {
 		return emptyString, errors.New("cannot expand user-specific home dir")
 	}
 
-	dir, err := getHomeDir(mode)
+	dir, err := userHomeDirE(mode)
 	if err != nil {
 		return emptyString, err
 	}
@@ -229,7 +273,17 @@ func Expand(path string, mode ExtractMode) (string, error) {
 	return filepath.Join(dir, path[1:]), nil
 }
 
-func getHomeDir(mode ExtractMode) (string, error) {
+// UserHomeDirE returns the current user's home directory (if they have one).
+// There are three extraction modes:
+// 1. NativeEMode calls os.UserHomeDir
+// 2. UserEMode instantiate user.Current and gets the HomeDir value
+// 3. CustomEMode calls CustomHomeDir
+// This function also return errors if any.
+func UserHomeDirE() (string, error) {
+	return userHomeDirE(NativeEMode)
+}
+
+func userHomeDirE(mode ExtractMode) (string, error) {
 	switch mode {
 	case NativeEMode:
 		dir, err := os.UserHomeDir()
@@ -254,6 +308,32 @@ func getHomeDir(mode ExtractMode) (string, error) {
 	default:
 		return emptyString, ErrModeNotDefined(getModeTag(UndefinedEMode))
 	}
+}
+
+// UserHomeDir returns the current user's home directory (if they have one).
+// Uses the NativeEMode as extraction mode.
+// This function does not return errors.
+func UserHomeDir() string {
+	return userHomeDir(NativeEMode)
+}
+
+func userHomeDir(m ExtractMode) string {
+	switch m {
+	case NativeEMode:
+		if d, err := os.UserHomeDir(); err == nil {
+			return d
+		}
+	case UserEMode:
+		if u, err := user.Current(); err == nil {
+			return u.HomeDir
+		}
+	case CustomEMode:
+		if d, err := CustomHomeDir(); err == nil {
+			return d
+		}
+	}
+
+	return emptyString
 }
 
 func getModeTag(m ExtractMode) string {

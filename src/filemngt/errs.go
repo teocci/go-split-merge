@@ -9,19 +9,20 @@ import (
 )
 
 const (
-	errCanNotGetPWD          = "cannot find the pwd: %s -> %s"
-	errCanNotExpandPath      = "path %s cannot be expanded: %s"
-	errCanNotMakeDir         = "cannot make directory: %s -> %s"
-	errNotValidFile          = "%s is not valid"
-	errCanNotOpenFile        = "%s file cannot be opened -> %s"
-	errModeNotDefined        = "%s mode not defined"
-	errEmptyEnvironment      = "HOMEDRIVE, HOMEPATH, or USERPROFILE are blank"
-	errEmptyOutputForHomeDir = "blank output when reading home directory"
-	errExistsIsNotADirectory = "path exists but is not a directory"
+	errCanNotFindPWD           = "cannot find the pwd: %s -> %s"
+	errCanNotExpandPath        = "path %s cannot be expanded: %s"
+	errCanNotMakeDir           = "cannot make directory: %s -> %s"
+	errNotValidFile            = "%s is not valid"
+	errCanNotOpenFile          = "%s file cannot be opened -> %s"
+	errModeNotDefined          = "%s mode not defined"
+	errEmptyEnvironment        = "HOMEDRIVE, HOMEPATH, or USERPROFILE are blank"
+	errEmptyOutputForHomeDir   = "blank output when reading home directory"
+	errPathExistIsNotDirectory = "%s path exists but is not a directory"
+	errPathIsNotDirectory      = "%s path exists but is not a directory"
 )
 
-func ErrCanNotGetPWD(p, e string) error {
-	return errors.New(fmt.Sprintf(errCanNotGetPWD, p, e))
+func ErrCanNotFindPWD(p, e string) error {
+	return errors.New(fmt.Sprintf(errCanNotFindPWD, p, e))
 }
 
 func ErrCanNotOpenFile(f, e string) error {
@@ -48,8 +49,12 @@ func ErrEmptyOutputForHomeDir() error {
 	return errors.New(errEmptyOutputForHomeDir)
 }
 
-func ErrExistsIsNotADirectory() error {
-	return errors.New(errExistsIsNotADirectory)
+func ErrPathExistIsNotDirectory(d string) error {
+	return errors.New(fmt.Sprintf(errPathExistIsNotDirectory, d))
+}
+
+func ErrPathIsNotDirectory(d string) error {
+	return errors.New(fmt.Sprintf(errPathIsNotDirectory, d))
 }
 
 func ErrCanNotExpandPath(p string, e string) error {

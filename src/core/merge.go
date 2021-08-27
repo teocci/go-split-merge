@@ -6,13 +6,14 @@ package core
 import (
 	"bufio"
 	"fmt"
-	"github.com/teocci/go-split-merge/src/filemngt"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/teocci/go-split-merge/src/filemngt"
 )
 
 const (
@@ -23,10 +24,11 @@ const (
 
 func Merge(src, dest string) (string, []string, error) {
 	var parts []string
-	var basePath, srcFFN, mergedFileName, mergedFilePath string
+	var basePath, destPath, mergedFPath string
+	var srcFFN, mergedFN string
 	var err error
 
-	if filemngt.IsValid(src) {
+	if filemngt.IsPathValid(src) {
 		basePath, srcFFN = filepath.Split(src)
 		srcExt := filepath.Ext(srcFFN)
 		srcFN := strings.TrimSuffix(srcFFN, srcExt)
@@ -34,19 +36,27 @@ func Merge(src, dest string) (string, []string, error) {
 		if len(basePath) == 0 {
 			basePath, err = os.Getwd()
 			if err != nil {
-				return emptyString, nil, filemngt.ErrCanNotGetPWD(basePath, err.Error())
+				return emptyString, nil, filemngt.ErrCanNotFindPWD(basePath, err.Error())
 			}
 		}
 
+		fmt.Println("basePath:", basePath)
+
 		parent := filepath.Dir(basePath)
-		destPath := filepath.Join(parent, dest)
+		fmt.Println("parent:", parent)
+
+		destPath, _ = filemngt.DirExtractPathE(dest)
+		if len(destPath) == 0 {
+			destPath = filepath.Join(parent, dest)
+		}
+		fmt.Println("destPath:", destPath)
 
 		err = filepath.WalkDir(basePath, func(path string, d fs.DirEntry, err error) error {
 			if !d.IsDir() || path == basePath {
 				r, err := regexp.MatchString(regExFirstElement+srcFN, d.Name())
 				if err == nil && r {
 					parts = append(parts, d.Name())
-					fmt.Println("f.name:", d.Name())
+					fmt.Println("part fn:", d.Name())
 				}
 			} else {
 				return filepath.SkipDir
@@ -55,19 +65,19 @@ func Merge(src, dest string) (string, []string, error) {
 			return nil
 		})
 		if err != nil {
-			return mergedFileName, nil, err
+			return mergedFN, nil, err
 		}
 
-		mergedFileName = joinFilePrefix + srcFN
-		mergedFilePath = filepath.Join(destPath, mergedFileName)
-		_, err = os.Create(mergedFilePath)
+		mergedFN = joinFilePrefix + srcFN
+		mergedFPath = filepath.Join(destPath, mergedFN)
+		_, err = os.Create(mergedFPath)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		// set the mergedFile to APPEND MODE!!
 		// open files r and w
-		mergedFile, err := os.OpenFile(mergedFilePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+		mergedFile, err := os.OpenFile(mergedFPath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -108,7 +118,7 @@ func Merge(src, dest string) (string, []string, error) {
 
 			// DON't USE ioutil.WriteFile, it will overwrite the previous bytes!
 			// Instead, write/save buffer to disk
-			// ioutil.WriteFile(mergedFileName, partBytes, os.ModeAppend)
+			// ioutil.WriteFile(mergedFN, partBytes, os.ModeAppend)
 			n, err := mergedFile.Write(partBytes)
 			if err != nil {
 				log.Fatal(err)
@@ -122,12 +132,12 @@ func Merge(src, dest string) (string, []string, error) {
 			partBytes = nil // reset or empty our buffer
 
 			fmt.Println("Written ", n, " bytes")
-			fmt.Println("Recombining part [", i, "] into : ", mergedFileName)
+			fmt.Println("Recombining part [", i, "] into : ", mergedFN)
 		}
 
 		// Now, close the mergedFile
 		mergedFile.Close()
 	}
 
-	return mergedFilePath, parts, nil
+	return mergedFPath, parts, nil
 }
