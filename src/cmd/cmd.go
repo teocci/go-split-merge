@@ -14,8 +14,8 @@ const (
 	appName  = "go-split-merge"
 	appShort = "Split/Join files"
 	appLong  = `This application split/join large files to improve portability over email or github commits.`
-	version  = "v1.0"
-	commit   = "5"
+	version  = "v1.1"
+	commit   = "0"
 )
 
 const (
