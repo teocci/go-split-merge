@@ -32,7 +32,7 @@ func DirExists(p string) bool {
 func FileNotExist(p string) bool {
 	// Check if file already exists
 	f, err := os.Open(p)
-	defer f.Close()
+	_ = f.Close()
 
 	return errors.Is(err, os.ErrNotExist)
 }
@@ -50,7 +50,7 @@ func IsPathValid(p string) bool {
 			return true
 		}
 	}
-	defer f.Close()
+	_ = f.Close()
 
 	return false
 }
@@ -87,7 +87,6 @@ func MakeDir(d string) error {
 		if !stat.IsDir() {
 			return ErrPathExistIsNotDirectory(d)
 		}
-
 		return nil
 	}
 
