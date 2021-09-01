@@ -113,13 +113,12 @@ func findWorkPath(path string, dest string) (string, error) {
 	} else {
 		destPath, err = filemngt.DirExtractPathE(dest)
 		if err != nil {
-			return emptyString, filemngt.ErrCanNotExpandPath(path, err.Error())
+			return emptyString, err
 		}
 		if len(destPath) == 0 {
 			destPath = path
 		}
 		fmt.Println("destPath:", destPath)
-
 	}
 
 	return destPath, nil

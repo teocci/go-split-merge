@@ -84,7 +84,7 @@ func dirExtractPathE(dir string, mode ExtractMode) (string, error) {
 		if path, err := expandByModeE(dir, mode); err == nil {
 			return path, nil
 		} else {
-			return emptyString, err
+			return emptyString, ErrCanNotExpandPath(path, err.Error())
 		}
 	}
 
